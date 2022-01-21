@@ -8,7 +8,7 @@ use actix_web::dev::Decompress;
 use actix_web::http::StatusCode;
 use actix_web::web::Bytes;
 use serde_json::{json, Map};
-use chia_types::blockchain::*;
+use druid_garden_chia_types::blockchain::*;
 
 mod responses;
 

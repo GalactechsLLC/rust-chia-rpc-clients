@@ -1,6 +1,6 @@
 use serde::{Deserialize};
 use std::collections::HashMap;
-use chia_types::blockchain::*;
+use druid_garden_chia_types::blockchain::*;
 
 
 #[derive(Deserialize)]
