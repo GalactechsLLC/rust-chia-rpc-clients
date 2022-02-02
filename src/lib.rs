@@ -12,7 +12,7 @@ use std::path::Path;
 
 mod responses;
 
-fn get_client(ssl_path: &str) -> Client {
+fn init_ssl(ssl_path: &str) -> SslConnector {
     let mut builder: SslConnectorBuilder = SslConnector::builder(SslMethod::tls()).unwrap();
     let ca_str = [ssl_path, "/daemon/private_daemon.crt"].concat();
     let ca_path = Path::new(ca_str.as_str());
@@ -23,10 +23,7 @@ fn get_client(ssl_path: &str) -> Client {
         .set_private_key_file(&key_path, SslFiletype::PEM)
         .unwrap();
     builder.set_verify(SslVerifyMode::NONE);
-    let connector = builder.build();
-    Client::builder()
-        .connector(Connector::new().ssl(connector).finish())
-        .finish()
+    builder.build()
 }
 
 fn get_url(host: &str, port: u32, request_uri: &str) -> String {
@@ -38,8 +35,14 @@ fn get_url(host: &str, port: u32, request_uri: &str) -> String {
     )
 }
 
+fn get_client(connector: SslConnector) -> Client {
+    Client::builder()
+        .connector(Connector::new().ssl(connector).finish())
+        .finish()
+}
+
 pub struct FullnodeClient {
-    client: Client,
+    connector: SslConnector,
     host: String,
     port: u32,
 }
@@ -47,7 +50,7 @@ pub struct FullnodeClient {
 impl FullnodeClient {
     pub fn new(host: &str, port: u32, ssl_path: &str) -> Self {
         FullnodeClient {
-            client: get_client(ssl_path),
+            connector: init_ssl(ssl_path),
             host: host.to_string(),
             port: port,
         }
@@ -55,8 +58,10 @@ impl FullnodeClient {
 
     pub async fn get_blockchain_state(&self) -> Result<BlockchainState, Box<dyn Error>> {
         let url: String = get_url(self.host.as_str(), self.port, "get_blockchain_state");
-        let mut resp: ClientResponse<Decompress<Payload>> =
-            self.client.post(url).send_body("{}").await?;
+        let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
+            .post(url)
+            .send_body("{}")
+            .await?;
         match resp.status() {
             StatusCode::OK => {
                 let body: Bytes = resp.body().limit(1024 * 1024 * 50).await?;
@@ -81,8 +86,7 @@ impl FullnodeClient {
         let url: String = get_url(self.host.as_str(), self.port, "get_block");
         let mut request_body = Map::new();
         request_body.insert("header_hash".to_string(), json!(header_hash));
-        let mut resp: ClientResponse<Decompress<Payload>> = self
-            .client
+        let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
             .post(url)
             .send_body(serde_json::to_string(&request_body)?)
             .await?;
@@ -114,8 +118,7 @@ impl FullnodeClient {
             "exclude_header_hash".to_string(),
             json!(if exclude_header_hash { "True" } else { "False" }),
         );
-        let mut resp: ClientResponse<Decompress<Payload>> = self
-            .client
+        let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
             .post(url)
             .send_body(serde_json::to_string(&request_body)?)
             .await?;
@@ -147,8 +150,7 @@ impl FullnodeClient {
         let url: String = get_url(self.host.as_str(), self.port, "get_block_record_by_height");
         let mut request_body = Map::new();
         request_body.insert("height".to_string(), json!(height));
-        let mut resp: ClientResponse<Decompress<Payload>> = self
-            .client
+        let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
             .post(url)
             .send_body(serde_json::to_string(&request_body)?)
             .await?;
@@ -170,8 +172,7 @@ impl FullnodeClient {
         let url: String = get_url(self.host.as_str(), self.port, "get_block_record");
         let mut request_body = Map::new();
         request_body.insert("header_hash".to_string(), json!(header_hash));
-        let mut resp: ClientResponse<Decompress<Payload>> = self
-            .client
+        let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
             .post(url)
             .send_body(serde_json::to_string(&request_body)?)
             .await?;
@@ -198,8 +199,7 @@ impl FullnodeClient {
         let mut request_body = Map::new();
         request_body.insert("start".to_string(), json!(start));
         request_body.insert("end".to_string(), json!(end));
-        let mut resp: ClientResponse<Decompress<Payload>> = self
-            .client
+        let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
             .post(url)
             .send_body(serde_json::to_string(&request_body)?)
             .await?;
@@ -225,8 +225,10 @@ impl FullnodeClient {
             self.port,
             "get_unfinished_block_headers",
         );
-        let mut resp: ClientResponse<Decompress<Payload>> =
-            self.client.post(url).send_body("{}").await?;
+        let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
+            .post(url)
+            .send_body("{}")
+            .await?;
         match resp.status() {
             StatusCode::OK => {
                 let body: Bytes = resp.body().limit(1024 * 1024 * 50).await?;
@@ -257,8 +259,7 @@ impl FullnodeClient {
             "newer_block_header_hash".to_string(),
             json!(newer_block_header_hash),
         );
-        let mut resp: ClientResponse<Decompress<Payload>> = self
-            .client
+        let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
             .post(url)
             .send_body(serde_json::to_string(&request_body)?)
             .await?;
@@ -296,8 +297,7 @@ impl FullnodeClient {
             "header_hash".to_string(),
             serde_json::Value::String(header_hash),
         );
-        let mut resp: ClientResponse<Decompress<Payload>> = self
-            .client
+        let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
             .post(url)
             .send_body(serde_json::to_string(&request_body)?)
             .await?;
@@ -318,8 +318,10 @@ impl FullnodeClient {
     }
     pub async fn get_initial_freeze_period(&self) -> Result<u64, Box<dyn Error>> {
         let url: String = get_url(self.host.as_str(), self.port, "get_initial_freeze_period");
-        let mut resp: ClientResponse<Decompress<Payload>> =
-            self.client.post(url).send_body("{}").await?;
+        let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
+            .post(url)
+            .send_body("{}")
+            .await?;
         match resp.status() {
             StatusCode::OK => {
                 let body: Bytes = resp.body().limit(1024 * 1024 * 50).await?;
@@ -337,8 +339,10 @@ impl FullnodeClient {
     }
     pub async fn get_network_info(&self) -> Result<NetworkInfo, Box<dyn Error>> {
         let url: String = get_url(self.host.as_str(), self.port, "get_network_info");
-        let mut resp: ClientResponse<Decompress<Payload>> =
-            self.client.post(url).send_body("{}").await?;
+        let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
+            .post(url)
+            .send_body("{}")
+            .await?;
         match resp.status() {
             StatusCode::OK => {
                 let body: Bytes = resp.body().limit(1024 * 1024 * 50).await?;
@@ -375,8 +379,7 @@ impl FullnodeClient {
         if sp_hash != None && challenge_hash != None {
             Err("InvalidArgument get_recent_signage_point_or_eos: One of sp_hash or challenge_hash must be None".into())
         } else {
-            let mut resp: ClientResponse<Decompress<Payload>> = self
-                .client
+            let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
                 .post(url)
                 .send_body(serde_json::to_string(&request_body)?)
                 .await?;
@@ -421,8 +424,7 @@ impl FullnodeClient {
         );
         request_body.insert("start_height".to_string(), json!(start_height));
         request_body.insert("end_height".to_string(), json!(end_height));
-        let mut resp: ClientResponse<Decompress<Payload>> = self
-            .client
+        let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
             .post(url)
             .send_body(serde_json::to_string(&request_body)?)
             .await?;
@@ -460,8 +462,7 @@ impl FullnodeClient {
         );
         request_body.insert("start_height".to_string(), json!(start_height));
         request_body.insert("end_height".to_string(), json!(end_height));
-        let mut resp: ClientResponse<Decompress<Payload>> = self
-            .client
+        let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
             .post(url)
             .send_body(serde_json::to_string(&request_body)?)
             .await?;
@@ -487,8 +488,7 @@ impl FullnodeClient {
         let url: String = get_url(self.host.as_str(), self.port, "get_coin_record_by_name");
         let mut request_body = Map::new();
         request_body.insert("name".to_string(), json!(name));
-        let mut resp: ClientResponse<Decompress<Payload>> = self
-            .client
+        let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
             .post(url)
             .send_body(serde_json::to_string(&request_body)?)
             .await?;
@@ -527,8 +527,7 @@ impl FullnodeClient {
         );
         request_body.insert("start_height".to_string(), json!(start_height));
         request_body.insert("end_height".to_string(), json!(end_height));
-        let mut resp: ClientResponse<Decompress<Payload>> = self
-            .client
+        let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
             .post(url)
             .send_body(serde_json::to_string(&request_body)?)
             .await?;
@@ -550,8 +549,7 @@ impl FullnodeClient {
         let url: String = get_url(self.host.as_str(), self.port, "push_tx");
         let mut request_body = Map::new();
         request_body.insert("spend_bundle".to_string(), json!(spend_bundle));
-        let mut resp: ClientResponse<Decompress<Payload>> = self
-            .client
+        let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
             .post(url)
             .send_body(serde_json::to_string(&request_body)?)
             .await?;
@@ -578,8 +576,7 @@ impl FullnodeClient {
         let mut request_body = Map::new();
         request_body.insert("coin_id".to_string(), json!(coin_id));
         request_body.insert("height".to_string(), json!(height));
-        let mut resp: ClientResponse<Decompress<Payload>> = self
-            .client
+        let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
             .post(url)
             .send_body(serde_json::to_string(&request_body)?)
             .await?;
@@ -601,16 +598,15 @@ impl FullnodeClient {
         &self,
         coin_record: &CoinRecord,
     ) -> Result<CoinSpend, Box<dyn Error>> {
-        self.get_puzzle_and_solution(
-            coin_record.coin.name().await?,
-            coin_record.spent_block_index,
-        )
-        .await
+        self.get_puzzle_and_solution(coin_record.coin.name(), coin_record.spent_block_index)
+            .await
     }
     pub async fn get_all_mempool_tx_ids(&self) -> Result<Vec<String>, Box<dyn Error>> {
         let url: String = get_url(self.host.as_str(), self.port, "get_all_mempool_tx_ids");
-        let mut resp: ClientResponse<Decompress<Payload>> =
-            self.client.post(url).send_body("{}").await?;
+        let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
+            .post(url)
+            .send_body("{}")
+            .await?;
         match resp.status() {
             StatusCode::OK => {
                 let body: Bytes = resp.body().limit(1024 * 1024 * 50).await?;
@@ -629,8 +625,10 @@ impl FullnodeClient {
         &self,
     ) -> Result<HashMap<String, MemPoolItem>, Box<dyn Error>> {
         let url: String = get_url(self.host.as_str(), self.port, "get_all_mempool_items");
-        let mut resp: ClientResponse<Decompress<Payload>> =
-            self.client.post(url).send_body("{}").await?;
+        let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
+            .post(url)
+            .send_body("{}")
+            .await?;
         match resp.status() {
             StatusCode::OK => {
                 let body: Bytes = resp.body().limit(1024 * 1024 * 50).await?;
@@ -652,8 +650,7 @@ impl FullnodeClient {
         let url: String = get_url(self.host.as_str(), self.port, "get_mempool_item_by_tx_id");
         let mut request_body = Map::new();
         request_body.insert("tx_id".to_string(), json!(tx_id));
-        let mut resp: ClientResponse<Decompress<Payload>> = self
-            .client
+        let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
             .post(url)
             .send_body(serde_json::to_string(&request_body)?)
             .await?;
@@ -674,14 +671,14 @@ impl FullnodeClient {
 }
 
 pub struct WalletClient {
-    client: Client,
+    connector: SslConnector,
     host: String,
     port: u32,
 }
 impl WalletClient {
     pub fn new(host: &str, port: u32, ssl_path: &str) -> Self {
         WalletClient {
-            client: get_client(ssl_path),
+            connector: init_ssl(ssl_path),
             host: host.to_string(),
             port: port,
         }
@@ -690,8 +687,7 @@ impl WalletClient {
         let url: String = get_url(self.host.as_str(), self.port, "log_in");
         let mut request_body = Map::new();
         request_body.insert("wallet_fingerprint".to_string(), json!(wallet_fingerprint));
-        let mut resp: ClientResponse<Decompress<Payload>> = self
-            .client
+        let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
             .post(url)
             .send_body(serde_json::to_string(&request_body)?)
             .await?;
@@ -713,8 +709,7 @@ impl WalletClient {
         let url: String = get_url(self.host.as_str(), self.port, "log_in_and_skip");
         let mut request_body = Map::new();
         request_body.insert("wallet_fingerprint".to_string(), json!(wallet_fingerprint));
-        let mut resp: ClientResponse<Decompress<Payload>> = self
-            .client
+        let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
             .post(url)
             .send_body(serde_json::to_string(&request_body)?)
             .await?;
@@ -734,8 +729,10 @@ impl WalletClient {
     }
     pub async fn get_wallets(&self) -> Result<Vec<WalletInfo>, Box<dyn Error>> {
         let url: String = get_url(self.host.as_str(), self.port, "get_wallets");
-        let mut resp: ClientResponse<Decompress<Payload>> =
-            self.client.post(url).send_body("{}").await?;
+        let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
+            .post(url)
+            .send_body("{}")
+            .await?;
         match resp.status() {
             StatusCode::OK => {
                 let body: Bytes = resp.body().limit(1024 * 1024 * 50).await?;
@@ -757,8 +754,7 @@ impl WalletClient {
         let url: String = get_url(self.host.as_str(), self.port, "get_wallet_balance");
         let mut request_body = Map::new();
         request_body.insert("wallet_id".to_string(), json!(wallet_id));
-        let mut resp: ClientResponse<Decompress<Payload>> = self
-            .client
+        let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
             .post(url)
             .send_body(serde_json::to_string(&request_body)?)
             .await?;
@@ -778,8 +774,10 @@ impl WalletClient {
     }
     pub async fn get_sync_status(&self) -> Result<WalletSync, Box<dyn Error>> {
         let url: String = get_url(self.host.as_str(), self.port, "get_sync_status");
-        let mut resp: ClientResponse<Decompress<Payload>> =
-            self.client.post(url).send_body("{}").await?;
+        let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
+            .post(url)
+            .send_body("{}")
+            .await?;
         match resp.status() {
             StatusCode::OK => {
                 let body: Bytes = resp.body().limit(1024 * 1024 * 50).await?;
@@ -811,8 +809,7 @@ impl WalletClient {
         request_body.insert("amount".to_string(), json!(amount));
         request_body.insert("address".to_string(), json!(address));
         request_body.insert("fee".to_string(), json!(fee));
-        let mut resp: ClientResponse<Decompress<Payload>> = self
-            .client
+        let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
             .post(url)
             .send_body(serde_json::to_string(&request_body)?)
             .await?;
@@ -838,8 +835,7 @@ impl WalletClient {
         request_body.insert("wallet_id".to_string(), json!(wallet_id));
         request_body.insert("additions".to_string(), json!(additions));
         request_body.insert("fee".to_string(), json!(fee));
-        let mut resp: ClientResponse<Decompress<Payload>> = self
-            .client
+        let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
             .post(url)
             .send_body(serde_json::to_string(&request_body)?)
             .await?;
@@ -863,8 +859,7 @@ impl WalletClient {
         let mut request_body = Map::new();
         request_body.insert("wallet_id".to_string(), json!(wallet_id));
         request_body.insert("transaction_id".to_string(), json!(transaction_id));
-        let mut resp: ClientResponse<Decompress<Payload>> = self
-            .client
+        let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
             .post(url)
             .send_body(serde_json::to_string(&request_body)?)
             .await?;
@@ -892,8 +887,7 @@ impl WalletClient {
         request_body.insert("additions".to_string(), json!(additions));
         request_body.insert("coins".to_string(), json!(coins));
         request_body.insert("fee".to_string(), json!(fee));
-        let mut resp: ClientResponse<Decompress<Payload>> = self
-            .client
+        let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
             .post(url)
             .send_body(serde_json::to_string(&request_body)?)
             .await?;
