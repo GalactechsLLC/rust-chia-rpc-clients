@@ -3,7 +3,24 @@ use actix_web::dev::Decompress;
 use actix_web::dev::Payload;
 use actix_web::http::StatusCode;
 use actix_web::web::Bytes;
-use druid_garden_chia_types::blockchain::*;
+use druid_garden_chia_types::blockchain::block_record::BlockRecord;
+use druid_garden_chia_types::blockchain::blockchain_state::BlockchainState;
+use druid_garden_chia_types::blockchain::coin::Coin;
+use druid_garden_chia_types::blockchain::coin_record::CoinRecord;
+use druid_garden_chia_types::blockchain::coin_spend::CoinSpend;
+use druid_garden_chia_types::blockchain::full_block::FullBlock;
+use druid_garden_chia_types::blockchain::mem_pool_item::MemPoolItem;
+use druid_garden_chia_types::blockchain::network_info::NetworkInfo;
+use druid_garden_chia_types::blockchain::pending_payment::PendingPayment;
+use druid_garden_chia_types::blockchain::signage_point_or_eos::SignagePointOrEOS;
+use druid_garden_chia_types::blockchain::sized_bytes::Bytes32;
+use druid_garden_chia_types::blockchain::spend_bundle::SpendBundle;
+use druid_garden_chia_types::blockchain::transaction_record::TransactionRecord;
+use druid_garden_chia_types::blockchain::tx_status::TXStatus;
+use druid_garden_chia_types::blockchain::unfinished_block::UnfinishedBlock;
+use druid_garden_chia_types::blockchain::wallet_balance::WalletBalance;
+use druid_garden_chia_types::blockchain::wallet_info::WalletInfo;
+use druid_garden_chia_types::blockchain::wallet_sync::WalletSync;
 use openssl::ssl::{SslConnector, SslConnectorBuilder, SslFiletype, SslMethod, SslVerifyMode};
 use serde_json::{json, Map};
 use std::collections::HashMap;
@@ -246,8 +263,8 @@ impl FullnodeClient {
     }
     pub async fn get_network_space(
         &self,
-        older_block_header_hash: &String,
-        newer_block_header_hash: &String,
+        older_block_header_hash: &Bytes32,
+        newer_block_header_hash: &Bytes32,
     ) -> Result<u64, Box<dyn Error>> {
         let url: String = get_url(self.host.as_str(), self.port, "get_network_space");
         let mut request_body = Map::new();
@@ -569,7 +586,7 @@ impl FullnodeClient {
     }
     pub async fn get_puzzle_and_solution(
         &self,
-        coin_id: String,
+        coin_id: Bytes32,
         height: u32,
     ) -> Result<CoinSpend, Box<dyn Error>> {
         let url: String = get_url(self.host.as_str(), self.port, "get_puzzle_and_solution");

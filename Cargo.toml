@@ -6,7 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-druid-garden-chia-types = { git = "https://github.com/GalactechsLLC/rust-chia-types" }
+druid-garden-chia-types = { path="../RustChiaTypes" }
+#druid-garden-chia-types = { git = "https://github.com/GalactechsLLC/rust-chia-types" }
 openssl = { version = "0.10", features = ["v110"] }
 actix-web = { version = "3", features = ["openssl"] }
 serde = { version = "1.0", features = ["derive"] }
