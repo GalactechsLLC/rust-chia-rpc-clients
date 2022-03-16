@@ -99,7 +99,7 @@ impl FullnodeClient {
             _ => Err("Bad Status Code".into()),
         }
     }
-    pub async fn get_block(&self, header_hash: String) -> Result<FullBlock, Box<dyn Error>> {
+    pub async fn get_block(&self, header_hash: &Bytes32) -> Result<FullBlock, Box<dyn Error>> {
         let url: String = get_url(self.host.as_str(), self.port, "get_block");
         let mut request_body = Map::new();
         request_body.insert("header_hash".to_string(), json!(header_hash));
@@ -185,7 +185,10 @@ impl FullnodeClient {
             _ => Err("Bad Status Code".into()),
         }
     }
-    pub async fn get_block_record(&self, header_hash: &str) -> Result<BlockRecord, Box<dyn Error>> {
+    pub async fn get_block_record(
+        &self,
+        header_hash: &Bytes32,
+    ) -> Result<BlockRecord, Box<dyn Error>> {
         let url: String = get_url(self.host.as_str(), self.port, "get_block_record");
         let mut request_body = Map::new();
         request_body.insert("header_hash".to_string(), json!(header_hash));
@@ -306,14 +309,11 @@ impl FullnodeClient {
     }
     pub async fn get_additions_and_removals(
         &self,
-        header_hash: String,
+        header_hash: &Bytes32,
     ) -> Result<(Vec<CoinRecord>, Vec<CoinRecord>), Box<dyn Error>> {
         let url: String = get_url(self.host.as_str(), self.port, "get_additions_and_removals");
         let mut request_body = Map::new();
-        request_body.insert(
-            "header_hash".to_string(),
-            serde_json::Value::String(header_hash),
-        );
+        request_body.insert("header_hash".to_string(), json!(header_hash));
         let mut resp: ClientResponse<Decompress<Payload>> = get_client(self.connector.clone())
             .post(url)
             .send_body(serde_json::to_string(&request_body)?)
@@ -379,8 +379,8 @@ impl FullnodeClient {
     }
     pub async fn get_recent_signage_point_or_eos(
         &self,
-        sp_hash: Option<String>,
-        challenge_hash: Option<String>,
+        sp_hash: Option<&Bytes32>,
+        challenge_hash: Option<&Bytes32>,
     ) -> Result<SignagePointOrEOS, Box<dyn Error>> {
         let url: String = get_url(
             self.host.as_str(),
@@ -423,7 +423,7 @@ impl FullnodeClient {
     }
     pub async fn get_coin_records_by_puzzle_hash(
         &self,
-        puzzle_hash: String,
+        puzzle_hash: &Bytes32,
         include_spent_coins: bool,
         start_height: u32,
         end_height: u32,
@@ -461,7 +461,7 @@ impl FullnodeClient {
     }
     pub async fn get_coin_records_by_puzzle_hashes(
         &self,
-        puzzle_hashes: Vec<String>,
+        puzzle_hashes: Vec<&Bytes32>,
         include_spent_coins: bool,
         start_height: u32,
         end_height: u32,
@@ -500,7 +500,7 @@ impl FullnodeClient {
 
     pub async fn get_coin_record_by_name(
         &self,
-        name: String,
+        name: &Bytes32,
     ) -> Result<CoinRecord, Box<dyn Error>> {
         let url: String = get_url(self.host.as_str(), self.port, "get_coin_record_by_name");
         let mut request_body = Map::new();
@@ -526,7 +526,7 @@ impl FullnodeClient {
     }
     pub async fn get_coin_records_by_parent_ids(
         &self,
-        parent_ids: Vec<String>,
+        parent_ids: Vec<&Bytes32>,
         include_spent_coins: bool,
         start_height: u32,
         end_height: u32,
@@ -586,7 +586,7 @@ impl FullnodeClient {
     }
     pub async fn get_puzzle_and_solution(
         &self,
-        coin_id: Bytes32,
+        coin_id: &Bytes32,
         height: u32,
     ) -> Result<CoinSpend, Box<dyn Error>> {
         let url: String = get_url(self.host.as_str(), self.port, "get_puzzle_and_solution");
@@ -615,7 +615,7 @@ impl FullnodeClient {
         &self,
         coin_record: &CoinRecord,
     ) -> Result<CoinSpend, Box<dyn Error>> {
-        self.get_puzzle_and_solution(coin_record.coin.name(), coin_record.spent_block_index)
+        self.get_puzzle_and_solution(&coin_record.coin.name(), coin_record.spent_block_index)
             .await
     }
     pub async fn get_all_mempool_tx_ids(&self) -> Result<Vec<String>, Box<dyn Error>> {
