@@ -42,7 +42,7 @@ pub struct BlockRecordAryResp {
 
 #[derive(Deserialize)]
 pub struct CoinRecordResp {
-    pub coin_record: CoinRecord,
+    pub coin_record: Option<CoinRecord>,
     pub success: bool,
 }
 
@@ -114,8 +114,8 @@ pub struct NetSpaceResp {
 
 #[derive(Deserialize)]
 pub struct SignagePointOrEOSResp {
-    pub signage_point: SignagePoint,
-    pub eos: SubSlotBundle,
+    pub signage_point: Option<SignagePoint>,
+    pub eos: Option<SubSlotBundle>,
     pub time_received: f64,
     pub reverted: bool,
     pub success: bool,

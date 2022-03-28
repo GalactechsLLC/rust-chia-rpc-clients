@@ -501,7 +501,7 @@ impl FullnodeClient {
     pub async fn get_coin_record_by_name(
         &self,
         name: &Bytes32,
-    ) -> Result<CoinRecord, Box<dyn Error>> {
+    ) -> Result<Option<CoinRecord>, Box<dyn Error>> {
         let url: String = get_url(self.host.as_str(), self.port, "get_coin_record_by_name");
         let mut request_body = Map::new();
         request_body.insert("name".to_string(), json!(name));
@@ -518,7 +518,8 @@ impl FullnodeClient {
                 if json.success {
                     Ok(json.coin_record)
                 } else {
-                    Err("Bad Failed to Fetch CoinRecord".into())
+                    //Err("Bad Failed to Fetch CoinRecord".into())
+                    Ok(None)
                 }
             }
             _ => Err("Bad Status Code".into()),
