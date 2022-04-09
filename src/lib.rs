@@ -86,7 +86,12 @@ impl FullnodeClient {
                 let json_result: Result<responses::BlockchainStateResp, serde_json::Error> =
                     serde_json::from_str(body_str);
                 if json_result.is_err() {
-                    Err("Failed to Parse Json".into())
+                    Err(format!(
+                        "Failed to Parse Json {},\r\n {}",
+                        body_str,
+                        json_result.err().unwrap()
+                    )
+                    .into())
                 } else {
                     let json: responses::BlockchainStateResp = json_result.ok().unwrap();
                     if json.success {
