@@ -26,6 +26,7 @@ use serde_json::{json, Map};
 use std::collections::HashMap;
 use std::error::Error;
 use std::path::Path;
+use std::time::Duration;
 
 mod responses;
 
@@ -54,7 +55,13 @@ fn get_url(host: &str, port: u32, request_uri: &str) -> String {
 
 fn get_client(connector: SslConnector) -> Client {
     Client::builder()
-        .connector(Connector::new().ssl(connector).finish())
+        .connector(
+            Connector::new()
+                .ssl(connector)
+                .timeout(Duration::from_secs(300))
+                .finish(),
+        )
+        .timeout(Duration::from_secs(300))
         .finish()
 }
 
@@ -518,12 +525,16 @@ impl FullnodeClient {
             StatusCode::OK => {
                 let body: Bytes = resp.body().limit(1024 * 1024 * 50).await?;
                 let body_str: &str = std::str::from_utf8(&body)?;
-                println!("{}", body_str);
-                let json: responses::CoinRecordResp = serde_json::from_str(body_str).unwrap();
+                let json: responses::CoinRecordResp = match serde_json::from_str(body_str) {
+                    Ok(json) => json,
+                    Err(e) => {
+                        println!("{:?}", e);
+                        return Err(e.into());
+                    }
+                };
                 if json.success {
                     Ok(json.coin_record)
                 } else {
-                    //Err("Bad Failed to Fetch CoinRecord".into())
                     Ok(None)
                 }
             }
