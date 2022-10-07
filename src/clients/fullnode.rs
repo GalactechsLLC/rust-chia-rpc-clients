@@ -34,7 +34,7 @@ impl FullnodeClient {
         FullnodeClient {
             client: get_client(ssl_path).unwrap_or_default(),
             host: host.to_string(),
-            port: port,
+            port,
         }
     }
     pub async fn get_blockchain_state(&self) -> Result<BlockchainState, Error> {
