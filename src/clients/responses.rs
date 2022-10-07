@@ -152,7 +152,7 @@ pub struct WalletBalanceResp {
 }
 
 #[derive(Deserialize)]
-pub struct WalletsResp {
+pub struct WalletInfoResp {
     pub wallets: Vec<WalletInfo>,
     pub success: bool,
 }
